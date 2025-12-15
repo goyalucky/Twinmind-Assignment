@@ -1,0 +1,718 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Second Brain - Chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --bg-gradient-1: #667eea;
+      --bg-gradient-2: #764ba2;
+      --text: #111827;
+      --text-light: #6b7280;
+      --bg-main: #ffffff;
+      --bg-secondary: #f9fafb;
+      --bg-tertiary: #f3f4f6;
+      --border: #e5e7eb;
+      --user-msg: #6366f1;
+      --ai-msg: #e5e7eb;
+      --ai-msg-text: #111827;
+      --shadow: rgba(0,0,0,0.1);
+    }
+
+    [data-theme="dark"] {
+      --text: #f9fafb;
+      --text-light: #9ca3af;
+      --bg-main: #1f2937;
+      --bg-secondary: #111827;
+      --bg-tertiary: #374151;
+      --border: #374151;
+      --ai-msg: #374151;
+      --ai-msg-text: #f9fafb;
+      --shadow: rgba(0,0,0,0.3);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      transition: background 0.3s ease;
+    }
+
+    .app {
+      background: var(--bg-main);
+      width: 100%;
+      max-width: 1000px;
+      height: 90vh;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: background 0.3s ease;
+    }
+
+    header {
+      padding: 1.2rem 1.5rem;
+      background: var(--primary);
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+    }
+
+    .title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .theme-toggle {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: rgba(255,255,255,0.3);
+      transform: scale(1.1);
+    }
+
+    #chat {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+      transition: background 0.3s ease;
+    }
+
+    #chat::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #chat::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #chat::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .msg-container {
+      display: flex;
+      margin: 1rem 0;
+      gap: 0.8rem;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .user-avatar {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    .ai-avatar {
+      background: linear-gradient(135deg, #f093fb, #f5576c);
+    }
+
+    .msg-wrapper {
+      flex: 1;
+      max-width: 70%;
+    }
+
+    .msg-container.user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-container.user .msg-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .msg {
+      padding: 0.8rem 1.1rem;
+      border-radius: 16px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      color: var(--text);
+      transition: all 0.3s ease;
+    }
+
+    .msg-container.user .msg {
+      background: var(--user-msg);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg-container.ai .msg {
+      background: var(--ai-msg);
+      color: var(--ai-msg-text);
+      border-bottom-left-radius: 4px;
+    }
+
+    .typing-indicator {
+      display: inline-flex;
+      gap: 4px;
+      padding: 0.5rem 0;
+    }
+
+    .typing-indicator span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-light);
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .sources {
+      margin-top: 0.5rem;
+      padding: 0.6rem;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .sources-title {
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+      color: var(--text);
+    }
+
+    .source-item {
+      padding: 0.3rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #controls {
+      display: flex;
+      gap: 10px;
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-main);
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    #input {
+      flex: 1;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      font-size: 1rem;
+      outline: none;
+      background: var(--bg-secondary);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    #input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    button {
+      padding: 0.8rem 1.2rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .icon-btn.recording {
+      background: #ef4444;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+
+    .panel {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--bg-tertiary);
+      transition: all 0.3s ease;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.8rem;
+    }
+
+    h4 {
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.85rem;
+      color: var(--primary);
+    }
+
+    .toggle-btn:hover {
+      background: rgba(99, 102, 241, 0.1);
+      transform: none;
+      box-shadow: none;
+    }
+
+    .panel-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+
+    .panel-content.open {
+      max-height: 300px;
+    }
+
+    form {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    select {
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-main);
+      color: var(--text);
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1rem 0;
+    }
+
+    @media (max-width: 768px) {
+      .app {
+        height: 100vh;
+        border-radius: 0;
+      }
+
+      .msg-wrapper {
+        max-width: 85%;
+      }
+
+      .title {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="header-left">
+        <div class="logo">🧠</div>
+        <div class="title">Second Brain</div>
+      </div>
+      <button class="theme-toggle" id="themeToggle">🌙</button>
+    </header>
+
+    <div id="chat"></div>
+
+    <div id="controls">
+      <input id="input" placeholder="Ask your Second Brain..." />
+      <button class="icon-btn" id="voiceBtn" title="Voice input">🎤</button>
+      <button id="send">Send</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h4>📚 Ingest Content</h4>
+        <button class="toggle-btn" id="togglePanel">Show</button>
+      </div>
+      <div class="panel-content" id="panelContent">
+        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">📄 Upload File</h4>
+        <form id="uploadForm">
+          <input type="file" name="file" id="fileInput" />
+          <select name="source_type" id="sourceType">
+            <option value="pdf">PDF</option>
+            <option value="txt">Text</option>
+            <option value="md">Markdown</option>
+            <option value="audio">Audio</option>
+          </select>
+          <button type="submit">Upload</button>
+        </form>
+
+        <hr/>
+
+        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem;">🌐 Ingest URL</h4>
+        <form id="urlForm">
+          <input type="text" id="urlInput" placeholder="https://..." />
+          <button type="submit">Ingest</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiBase = "http://localhost:8000";
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const themeToggle = document.getElementById("themeToggle");
+    const togglePanel = document.getElementById("togglePanel");
+    const panelContent = document.getElementById("panelContent");
+
+    let recognition;
+    let isRecording = false;
+
+    // Theme toggle
+    const currentTheme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    themeToggle.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+
+    themeToggle.onclick = () => {
+      const theme = document.documentElement.getAttribute("data-theme");
+      const newTheme = theme === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+      themeToggle.textContent = newTheme === "dark" ? "☀️" : "🌙";
+    };
+
+    // Panel toggle
+    togglePanel.onclick = () => {
+      const isOpen = panelContent.classList.contains("open");
+      panelContent.classList.toggle("open");
+      togglePanel.textContent = isOpen ? "Show" : "Hide";
+    };
+
+    // Send message
+    async function sendMessage() {
+      const q = input.value.trim();
+      if (!q) return;
+      
+      appendMessage(q, "user");
+      input.value = "";
+      
+      showTypingIndicator();
+      
+      try {
+        const fd = new FormData();
+        fd.append("q", q);
+        const res = await fetch(`${apiBase}/query`, { method: "POST", body: fd });
+        const data = await res.json();
+        
+        removeTypingIndicator();
+        await typeMessage(data.answer, "ai", data.sources || []);
+      } catch (error) {
+        removeTypingIndicator();
+        appendMessage("Sorry, I encountered an error. Please try again.", "ai");
+      }
+    }
+
+    sendBtn.onclick = sendMessage;
+    input.onkeypress = (e) => {
+      if (e.key === "Enter") sendMessage();
+    };
+
+    // Voice input
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        isRecording = false;
+        voiceBtn.classList.remove("recording");
+      };
+
+      recognition.onerror = () => {
+        isRecording = false;
+        voiceBtn.classList.remove("recording");
+      };
+
+      recognition.onend = () => {
+        isRecording = false;
+        voiceBtn.classList.remove("recording");
+      };
+
+      voiceBtn.onclick = () => {
+        if (isRecording) {
+          recognition.stop();
+        } else {
+          recognition.start();
+          isRecording = true;
+          voiceBtn.classList.add("recording");
+        }
+      };
+    } else {
+      voiceBtn.style.display = "none";
+    }
+
+    // Typing animation
+    async function typeMessage(text, role, sources = []) {
+      const container = document.createElement("div");
+      container.className = `msg-container ${role}`;
+      
+      const avatar = document.createElement("div");
+      avatar.className = `avatar ${role}-avatar`;
+      avatar.textContent = role === "user" ? "👤" : "🤖";
+      
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg-wrapper";
+      
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      
+      wrapper.appendChild(msg);
+      container.appendChild(avatar);
+      container.appendChild(wrapper);
+      chat.appendChild(container);
+      chat.scrollTop = chat.scrollHeight;
+      
+      // Type out the message
+      for (let i = 0; i < text.length; i++) {
+        msg.textContent += text[i];
+        if (i % 3 === 0) { // Scroll every few characters
+          chat.scrollTop = chat.scrollHeight;
+        }
+        await new Promise(resolve => setTimeout(resolve, 20));
+      }
+      
+      // Add sources if available
+      if (sources.length > 0) {
+        const sourcesDiv = document.createElement("div");
+        sourcesDiv.className = "sources";
+        sourcesDiv.innerHTML = `
+          <div class="sources-title">📚 Sources:</div>
+          ${sources.map(s => `<div class="source-item">📄 ${s}</div>`).join('')}
+        `;
+        wrapper.appendChild(sourcesDiv);
+      }
+      
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function appendMessage(text, role, sources = []) {
+      const container = document.createElement("div");
+      container.className = `msg-container ${role}`;
+      
+      const avatar = document.createElement("div");
+      avatar.className = `avatar ${role}-avatar`;
+      avatar.textContent = role === "user" ? "👤" : "🤖";
+      
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg-wrapper";
+      
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      msg.textContent = text;
+      
+      wrapper.appendChild(msg);
+      
+      if (sources.length > 0) {
+        const sourcesDiv = document.createElement("div");
+        sourcesDiv.className = "sources";
+        sourcesDiv.innerHTML = `
+          <div class="sources-title">📚 Sources:</div>
+          ${sources.map(s => `<div class="source-item">📄 ${s}</div>`).join('')}
+        `;
+        wrapper.appendChild(sourcesDiv);
+      }
+      
+      container.appendChild(avatar);
+      container.appendChild(wrapper);
+      chat.appendChild(container);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+      const container = document.createElement("div");
+      container.className = "msg-container ai typing-container";
+      container.id = "typingIndicator";
+      
+      const avatar = document.createElement("div");
+      avatar.className = "avatar ai-avatar";
+      avatar.textContent = "🤖";
+      
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg-wrapper";
+      
+      const msg = document.createElement("div");
+      msg.className = "msg";
+      msg.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+      
+      wrapper.appendChild(msg);
+      container.appendChild(avatar);
+      container.appendChild(wrapper);
+      chat.appendChild(container);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+      const indicator = document.getElementById("typingIndicator");
+      if (indicator) indicator.remove();
+    }
+
+    // File upload
+    document.getElementById("uploadForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById("fileInput");
+      if (!fileInput.files.length) {
+        alert("Please choose a file");
+        return;
+      }
+      
+      const fd = new FormData();
+      fd.append("file", fileInput.files[0]);
+      fd.append("source_type", document.getElementById("sourceType").value);
+      fd.append("title", fileInput.files[0].name);
+      
+      try {
+        await fetch(`${apiBase}/ingest/upload`, { method: "POST", body: fd });
+        alert("✅ File ingested successfully!");
+        fileInput.value = "";
+      } catch (error) {
+        alert("❌ Error ingesting file");
+      }
+    };
+
+    // URL ingest
+    document.getElementById("urlForm").onsubmit = async (e) => {
+      e.preventDefault();
+      const url = document.getElementById("urlInput").value.trim();
+      if (!url) return;
+      
+      const fd = new FormData();
+      fd.append("url", url);
+      
+      try {
+        await fetch(`${apiBase}/ingest/url`, { method: "POST", body: fd });
+        alert("✅ URL ingested successfully!");
+        document.getElementById("urlInput").value = "";
+      } catch (error) {
+        alert("❌ Error ingesting URL");
+      }
+    };
+  </script>
+</body>
+</html>
